@@ -21,6 +21,9 @@ DOCUMENT_TYPE_LABELS = {
 }
 
 BIOLOGY_TEXT_VALUES = ["positif", "negatif", "normal", "anormal", "non contributif"]
+# Unites plausibles pour un resultat numerique (pas de lien avec un analyte
+# precis dans ce schema simplifie, cf. valeur_numerique).
+BIOLOGY_UNITS = ["g/L", "mmol/L", "mg/L", "UI/L", "%", "10^9/L", "umol/L"]
 
 # UCD illustratifs (non officiels) associes a un code ATC reel, pour un
 # echantillon de medicaments courants.
@@ -36,6 +39,28 @@ MEDICATIONS = [
     {"ucd": "3400930096770", "atc": "C10AA05", "unite": "mg", "dose": (10, 80)},
     {"ucd": "3400927699023", "atc": "N02AA01", "unite": "mg", "dose": (5, 20)},
 ]
+
+VOIES_ADMINISTRATION = ["orale", "intraveineuse", "intramusculaire", "sous-cutanee", "topique"]
+
+MEDICATION_COMMENTS = [
+    "dose ajustee sur avis medical",
+    "administration retardee",
+    "effet indesirable signale",
+    "traitement interrompu a la demande du patient",
+]
+
+# "Feuille de constantes" classique : chaque type a sa propre unite et sa
+# propre plage de valeurs plausibles (aucune signification clinique precise).
+CONSTANT_TYPES = {
+    "poids": {"unite": "kg", "range": (45, 110), "decimals": 1, "n_range": (1, 3)},
+    "taille": {"unite": "cm", "range": (150, 195), "decimals": 0, "n_range": (1, 1)},
+    "temperature": {"unite": "degC", "range": (35.5, 39.5), "decimals": 1, "n_range": (2, 6)},
+    "frequence_cardiaque": {"unite": "bpm", "range": (50, 120), "decimals": 0, "n_range": (2, 6)},
+    "frequence_respiratoire": {"unite": "/min", "range": (12, 28), "decimals": 0, "n_range": (2, 6)},
+    "saturation_o2": {"unite": "%", "range": (90, 100), "decimals": 0, "n_range": (2, 6)},
+    "pression_arterielle_systolique": {"unite": "mmHg", "range": (90, 180), "decimals": 0, "n_range": (2, 6)},
+    "pression_arterielle_diastolique": {"unite": "mmHg", "range": (50, 110), "decimals": 0, "n_range": (2, 6)},
+}
 
 random.seed(SEED)
 Faker.seed(SEED)
@@ -72,10 +97,11 @@ def generate():
     uf_by_specialty = build_uf_by_specialty(c["specialty"] for c in cases)
 
     patients, sejours, mouvements, documents = [], [], [], []
-    biologies, medicaments = [], []
+    biologies, medicaments, constantes = [], [], []
     document_counter = 1
     biologie_counter = 1
     medicament_counter = 1
+    constante_counter = 1
 
     for i, case in enumerate(cases, start=1):
         id_patient = f"PAT{i:06d}"
@@ -130,6 +156,7 @@ def generate():
                 "date_prelevement": random_datetime_during_stay(date_entree, date_sortie),
                 "valeur_numerique": round(random.uniform(0.1, 200), 2) if is_numeric else None,
                 "valeur_texte": None if is_numeric else random.choice(BIOLOGY_TEXT_VALUES),
+                "unite": random.choice(BIOLOGY_UNITS) if is_numeric else None,
             })
             biologie_counter += 1
 
@@ -144,8 +171,24 @@ def generate():
                 "unite": medication["unite"],
                 "ucd": medication["ucd"],
                 "atc": medication["atc"],
+                "voie_administration": random.choice(VOIES_ADMINISTRATION),
+                "conditionnelle": random.random() < 0.2,
+                "commentaire": random.choice(MEDICATION_COMMENTS) if random.random() < 0.15 else None,
             })
             medicament_counter += 1
+
+        for type_constante, spec in CONSTANT_TYPES.items():
+            for _ in range(random.randint(*spec["n_range"])):
+                constantes.append({
+                    "id_constante": f"CST{constante_counter:06d}",
+                    "id_patient": id_patient,
+                    "id_sejour": id_sejour,
+                    "type_constante": type_constante,
+                    "date": random_datetime_during_stay(date_entree, date_sortie),
+                    "valeur": round(random.uniform(*spec["range"]), spec["decimals"]),
+                    "unite": spec["unite"],
+                })
+                constante_counter += 1
 
         date_deces = (
             date_sortie + timedelta(days=random.randint(0, 5))
@@ -167,6 +210,7 @@ def generate():
         pd.DataFrame(documents),
         pd.DataFrame(biologies),
         pd.DataFrame(medicaments),
+        pd.DataFrame(constantes),
     )
 
 
@@ -186,7 +230,7 @@ def validate_coherence(df_sejour, df_mouvement):
 
 def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    df_patient, df_sejour, df_mouvement, df_document, df_biologie, df_medicament = generate()
+    df_patient, df_sejour, df_mouvement, df_document, df_biologie, df_medicament, df_constante = generate()
     df_patient["date_deces"] = pd.to_datetime(df_patient["date_deces"])
     validate_coherence(df_sejour, df_mouvement)
 
@@ -196,6 +240,7 @@ def main():
     df_document.to_parquet(DATA_DIR / "document.parquet", index=False)
     df_biologie.to_parquet(DATA_DIR / "biologie.parquet", index=False)
     df_medicament.to_parquet(DATA_DIR / "medicament.parquet", index=False)
+    df_constante.to_parquet(DATA_DIR / "constante.parquet", index=False)
 
     print(f"patient    : {len(df_patient):>5} lignes")
     print(f"sejour     : {len(df_sejour):>5} lignes")
@@ -203,6 +248,7 @@ def main():
     print(f"document   : {len(df_document):>5} lignes")
     print(f"biologie   : {len(df_biologie):>5} lignes")
     print(f"medicament : {len(df_medicament):>5} lignes")
+    print(f"constante  : {len(df_constante):>5} lignes")
     print(f"Fichiers ecrits dans {DATA_DIR}")
 
 

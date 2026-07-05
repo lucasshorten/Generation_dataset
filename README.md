@@ -7,9 +7,9 @@ Generation d'un jeu de donnees synthetique de type entrepot de donnees de sante
 Les cas PARHAF (comptes-rendus medicaux fictifs, redigers par des internes)
 servent de source de contenu clinique realiste ; ce depot les recombine en un
 schema relationnel simple (patient / sejour / mouvement / document / biologie /
-medicament) avec des identifiants sequentiels generes localement. Le nom des
-patients present dans le dataset source n'est pas repris dans les fichiers
-generes.
+medicament / constante) avec des identifiants sequentiels generes localement.
+Le nom des patients present dans le dataset source n'est pas repris dans les
+fichiers generes.
 
 Le dossier `data/` (fichiers `.parquet` generes) n'est pas versionne — suivez
 les etapes ci-dessous pour le reconstruire localement.
@@ -53,7 +53,7 @@ python generate_data.py
 ```
 
 A partir d'un echantillon de 100 cas PARHAF (graine fixe `SEED = 42` pour la
-reproductibilite), ce script genere six fichiers coherents entre eux dans
+reproductibilite), ce script genere sept fichiers coherents entre eux dans
 `data/` :
 
 - `patient.parquet` — un patient par cas (`id_patient`, `age`, `sexe`, `date_deces` eventuelle)
@@ -61,9 +61,15 @@ reproductibilite), ce script genere six fichiers coherents entre eux dans
 - `mouvement.parquet` — mouvements intra-sejour (une UF par sejour dans cette version)
 - `document.parquet` — documents cliniques (CRH/CRC/CRO) rattaches au sejour, au format HTML
 - `biologie.parquet` — resultats de biologie rattaches au sejour (`id_biologie`, `id_patient`,
-  `id_sejour`, `uf`, `date_prelevement`, `valeur_numerique` ou `valeur_texte` selon le type de resultat)
+  `id_sejour`, `uf`, `date_prelevement`, `valeur_numerique` ou `valeur_texte` selon le type de
+  resultat, `unite` du resultat numerique)
 - `medicament.parquet` — administrations medicamenteuses rattachees au sejour (`id_medicament`,
-  `id_patient`, `id_sejour`, `date_administration`, `quantite_administree`, `unite`, `ucd`, `atc`)
+  `id_patient`, `id_sejour`, `date_administration`, `quantite_administree`, `unite`, `ucd`, `atc`,
+  `voie_administration`, `conditionnelle` (administration systematique ou si besoin), `commentaire`)
+- `constante.parquet` — constantes vitales rattachees au sejour, au format long (`id_constante`,
+  `id_patient`, `id_sejour`, `type_constante`, `date`, `valeur`, `unite`) ; types couverts : poids,
+  taille, temperature, frequence cardiaque, frequence respiratoire, saturation en oxygene, pression
+  arterielle systolique/diastolique
 
 ### 3. (Optionnel) Explorer les donnees generees
 
@@ -77,7 +83,7 @@ jupyter notebook revue.ipynb
 ## Structure du depot
 
 ```
-generate_data.py           # genere data/{patient,sejour,mouvement,document,biologie,medicament}.parquet
+generate_data.py           # genere data/{patient,sejour,mouvement,document,biologie,medicament,constante}.parquet
 download_parhaf_cases.py   # genere data/parhaf_cases.parquet depuis Hugging Face
 revue.ipynb                # revue exploratoire des fichiers generes
 requirements.txt
