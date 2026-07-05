@@ -61,11 +61,11 @@ reproductibilite), ce script genere sept fichiers coherents entre eux dans
 - `mouvement.parquet` — mouvements intra-sejour (une UF par sejour dans cette version)
 - `document.parquet` — documents cliniques (CRH/CRC/CRO) rattaches au sejour, au format HTML
 - `biologie.parquet` — resultats de biologie rattaches au sejour (`id_biologie`, `id_patient`,
-  `id_sejour`, `uf`, `date_prelevement`, `valeur_numerique` ou `valeur_texte` selon le type de
-  resultat, `unite` du resultat numerique)
+  `id_sejour`, `uf`, `code_analyse`, `libelle_analyse`, `date_prelevement`, `valeur_numerique` ou
+  `valeur_texte` selon le type de resultat, `unite` du resultat numerique)
 - `medicament.parquet` — administrations medicamenteuses rattachees au sejour (`id_medicament`,
-  `id_patient`, `id_sejour`, `date_administration`, `quantite_administree`, `unite`, `ucd`, `atc`,
-  `voie_administration`, `conditionnelle` (administration systematique ou si besoin), `commentaire`)
+  `id_patient`, `id_sejour`, `date_administration`, `quantite_administree`, `unite`, `ucd` (UCD7),
+  `atc`, `voie_administration`, `conditionnelle` (administration systematique ou si besoin), `commentaire`)
 - `constante.parquet` — constantes vitales rattachees au sejour, au format long (`id_constante`,
   `id_patient`, `id_sejour`, `type_constante`, `date`, `valeur`, `unite`) ; types couverts : poids,
   taille, temperature, frequence cardiaque, frequence respiratoire, saturation en oxygene, pression

@@ -21,23 +21,39 @@ DOCUMENT_TYPE_LABELS = {
 }
 
 BIOLOGY_TEXT_VALUES = ["positif", "negatif", "normal", "anormal", "non contributif"]
-# Unites plausibles pour un resultat numerique (pas de lien avec un analyte
-# precis dans ce schema simplifie, cf. valeur_numerique).
-BIOLOGY_UNITS = ["g/L", "mmol/L", "mg/L", "UI/L", "%", "10^9/L", "umol/L"]
 
-# UCD illustratifs (non officiels) associes a un code ATC reel, pour un
+# Analytes de biologie numeriques : code, libelle, unite et plage plausible
+# (aucune signification clinique precise) pour chacun.
+BIOLOGY_NUMERIC_ANALYTES = [
+    {"code": "NA", "libelle": "Sodium", "unite": "mmol/L", "range": (130, 145)},
+    {"code": "POT", "libelle": "Potassium", "unite": "mmol/L", "range": (3.0, 5.5)},
+    {"code": "CREAT", "libelle": "Creatinine", "unite": "umol/L", "range": (50, 120)},
+    {"code": "GLUC", "libelle": "Glucose", "unite": "mmol/L", "range": (3.5, 7.0)},
+    {"code": "HB", "libelle": "Hemoglobine", "unite": "g/dL", "range": (10, 16)},
+    {"code": "LEUCO", "libelle": "Leucocytes", "unite": "10^9/L", "range": (4, 12)},
+    {"code": "PLAQ", "libelle": "Plaquettes", "unite": "10^9/L", "range": (150, 450)},
+    {"code": "CRP", "libelle": "Proteine C reactive", "unite": "mg/L", "range": (0, 80)},
+]
+
+# Analytes de biologie a resultat textuel (pas d'unite).
+BIOLOGY_TEXT_ANALYTES = [
+    {"code": "HEMOC", "libelle": "Hemoculture"},
+    {"code": "ECBU", "libelle": "Examen cytobacteriologique des urines"},
+]
+
+# UCD7 illustratifs (non officiels) associes a un code ATC reel, pour un
 # echantillon de medicaments courants.
 MEDICATIONS = [
-    {"ucd": "3400893940692", "atc": "N02BE01", "unite": "mg", "dose": (500, 1000)},
-    {"ucd": "3400935861654", "atc": "M01AE01", "unite": "mg", "dose": (200, 400)},
-    {"ucd": "3400892014319", "atc": "J01CA04", "unite": "mg", "dose": (500, 1000)},
-    {"ucd": "3400930093625", "atc": "A02BC01", "unite": "mg", "dose": (20, 40)},
-    {"ucd": "3400921959219", "atc": "B01AC06", "unite": "mg", "dose": (75, 300)},
-    {"ucd": "3400937246430", "atc": "C09AA02", "unite": "mg", "dose": (5, 20)},
-    {"ucd": "3400935928562", "atc": "A10BA02", "unite": "mg", "dose": (500, 1000)},
-    {"ucd": "3400892449517", "atc": "N05BA01", "unite": "mg", "dose": (2, 10)},
-    {"ucd": "3400930096770", "atc": "C10AA05", "unite": "mg", "dose": (10, 80)},
-    {"ucd": "3400927699023", "atc": "N02AA01", "unite": "mg", "dose": (5, 20)},
+    {"ucd": "3940692", "atc": "N02BE01", "unite": "mg", "dose": (500, 1000)},
+    {"ucd": "5861654", "atc": "M01AE01", "unite": "mg", "dose": (200, 400)},
+    {"ucd": "2014319", "atc": "J01CA04", "unite": "mg", "dose": (500, 1000)},
+    {"ucd": "0093625", "atc": "A02BC01", "unite": "mg", "dose": (20, 40)},
+    {"ucd": "1959219", "atc": "B01AC06", "unite": "mg", "dose": (75, 300)},
+    {"ucd": "7246430", "atc": "C09AA02", "unite": "mg", "dose": (5, 20)},
+    {"ucd": "5928562", "atc": "A10BA02", "unite": "mg", "dose": (500, 1000)},
+    {"ucd": "2449517", "atc": "N05BA01", "unite": "mg", "dose": (2, 10)},
+    {"ucd": "0096770", "atc": "C10AA05", "unite": "mg", "dose": (10, 80)},
+    {"ucd": "7699023", "atc": "N02AA01", "unite": "mg", "dose": (5, 20)},
 ]
 
 VOIES_ADMINISTRATION = ["orale", "intraveineuse", "intramusculaire", "sous-cutanee", "topique"]
@@ -146,17 +162,27 @@ def generate():
 
         for _ in range(random.randint(2, 8)):
             is_numeric = random.random() < 0.75
-            # Plage numerique arbitraire : aucune valeur de reference clinique
-            # n'est associee (pas de nom d'analyte dans ce schema simplifie).
+            if is_numeric:
+                analyte = random.choice(BIOLOGY_NUMERIC_ANALYTES)
+                valeur_numerique = round(random.uniform(*analyte["range"]), 2)
+                valeur_texte = None
+                unite = analyte["unite"]
+            else:
+                analyte = random.choice(BIOLOGY_TEXT_ANALYTES)
+                valeur_numerique = None
+                valeur_texte = random.choice(BIOLOGY_TEXT_VALUES)
+                unite = None
             biologies.append({
                 "id_biologie": f"BIO{biologie_counter:06d}",
                 "id_patient": id_patient,
                 "id_sejour": id_sejour,
                 "uf": uf,
+                "code_analyse": analyte["code"],
+                "libelle_analyse": analyte["libelle"],
                 "date_prelevement": random_datetime_during_stay(date_entree, date_sortie),
-                "valeur_numerique": round(random.uniform(0.1, 200), 2) if is_numeric else None,
-                "valeur_texte": None if is_numeric else random.choice(BIOLOGY_TEXT_VALUES),
-                "unite": random.choice(BIOLOGY_UNITS) if is_numeric else None,
+                "valeur_numerique": valeur_numerique,
+                "valeur_texte": valeur_texte,
+                "unite": unite,
             })
             biologie_counter += 1
 
