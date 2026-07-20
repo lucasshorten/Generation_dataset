@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fiche de revue — Demande de réutilisation</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+  :root{
+    --ink:#1C2530;
+    --muted:#5B6472;
+    --line:#E2E6EB;
+    --bg:#F5F7FA;
+    --card:#FFFFFF;
+    --accent:#1F4E78;
+    --accent-soft:#EAF1F7;
+    --st-nouvelle:#64748B;
+    --st-encours:#D97706;
+    --st-attente:#EA580C;
+    --st-validee:#059669;
+    --st-refusee:#DC2626;
+    --st-cloturee:#475569;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:13px;
+    line-height:1.45;
+  }
+  #app{
+    max-width:760px;
+    margin:0 auto;
+    padding:16px;
+  }
+  .empty{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:60px 20px;
+    color:var(--muted);
+    text-align:center;
+  }
+  .empty .glyph{
+    width:34px;height:34px;border-radius:8px;
+    border:1.5px dashed var(--muted);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;margin-bottom:6px;
+  }
+
+  .dossier{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow:0 1px 2px rgba(16,24,40,0.04);
+  }
+
+  .dossier-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 18px;
+    background:var(--accent);
+    color:#fff;
+  }
+  .dossier-head .tag{
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    opacity:.85;
+    display:block;
+    margin-bottom:2px;
+  }
+  .dossier-head h1{
+    margin:0;
+    font-size:16px;
+    font-weight:600;
+  }
+  .badge{
+    padding:5px 11px;
+    border-radius:999px;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:.02em;
+    white-space:nowrap;
+    background:rgba(255,255,255,.16);
+  }
+
+  .section{
+    padding:16px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  .section:last-child{border-bottom:none;}
+  .section h2{
+    margin:0 0 12px;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px 20px;
+  }
+  .field label{
+    display:block;
+    font-size:10.5px;
+    color:var(--muted);
+    margin-bottom:3px;
+  }
+  .field .val{
+    font-size:13.5px;
+    color:var(--ink);
+    word-break:break-word;
+  }
+  .field .val.empty-val{ color:#B3B9C2; font-style:italic; }
+
+  .prose{
+    font-size:13.5px;
+    color:var(--ink);
+    white-space:pre-wrap;
+  }
+
+  .edit-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px 16px;
+  }
+  .edit-grid .full{ grid-column:1 / -1; }
+
+  label.edit-label{
+    display:block;
+    font-size:10.5px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  select, textarea{
+    width:100%;
+    font-family:inherit;
+    font-size:13px;
+    color:var(--ink);
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+  }
+  select:focus, textarea:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+    border-color:var(--accent);
+  }
+  textarea{ min-height:64px; resize:vertical; }
+
+  .status-dot{
+    display:inline-block;
+    width:8px;height:8px;
+    border-radius:50%;
+    margin-right:6px;
+    vertical-align:middle;
+  }
+
+  .footer-bar{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    padding:14px 18px;
+    background:var(--accent-soft);
+  }
+  .feedback{
+    font-size:12px;
+    color:var(--muted);
+    margin-right:auto;
+  }
+  .feedback.ok{ color:var(--st-validee); font-weight:600; }
+  .feedback.err{ color:var(--st-refusee); font-weight:600; }
+
+  button.save{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:9px 18px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.save:hover{ background:#183F61; }
+  button.save:disabled{ background:#9AAAB8; cursor:not-allowed; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="empty" id="emptyState">
+    <div class="glyph">i</div>
+    <div><strong>Aucune demande sélectionnée</strong></div>
+    <div>Cliquez une ligne dans la table « Demandes_Reutilisation » pour ouvrir sa fiche de revue ici.</div>
+  </div>
+
+  <div class="dossier" id="dossier" style="display:none;">
+    <div class="dossier-head">
+      <div>
+        <span class="tag" id="tagId">DOSSIER</span>
+        <h1 id="headOrganisme">—</h1>
+      </div>
+      <span class="badge" id="headBadge">—</span>
+    </div>
+
+    <div class="section">
+      <h2>Demandeur</h2>
+      <div class="grid">
+        <div class="field"><label>Nom</label><div class="val" id="fNom">—</div></div>
+        <div class="field"><label>Organisme</label><div class="val" id="fOrganisme">—</div></div>
+        <div class="field"><label>Email</label><div class="val" id="fEmail">—</div></div>
+        <div class="field"><label>Téléphone</label><div class="val" id="fTel">—</div></div>
+        <div class="field"><label>Type de demandeur</label><div class="val" id="fType">—</div></div>
+        <div class="field"><label>Date de la demande</label><div class="val" id="fDate">—</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Objet de la demande</h2>
+      <div class="grid">
+        <div class="field" style="grid-column:1/-1;">
+          <label>Jeu de données demandé</label>
+          <div class="prose" id="fJeu">—</div>
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Finalité de la réutilisation</label>
+          <div class="prose" id="fFinalite">—</div>
+        </div>
+        <div class="field"><label>Type de réutilisation</label><div class="val" id="fTypeReut">—</div></div>
+        <div class="field"><label>Format souhaité</label><div class="val" id="fFormat">—</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Instruction</h2>
+      <div class="edit-grid">
+        <div>
+          <label class="edit-label">Statut</label>
+          <select id="editStatut"></select>
+        </div>
+        <div>
+          <label class="edit-label">Agent assigné</label>
+          <select id="editAgent"></select>
+        </div>
+        <div>
+          <label class="edit-label">Priorité</label>
+          <select id="editPriorite"></select>
+        </div>
+        <div>
+          <label class="edit-label">Échéance</label>
+          <div class="val" id="fEcheance">—</div>
+        </div>
+        <div class="full">
+          <label class="edit-label">Commentaires internes</label>
+          <textarea id="editComment" placeholder="Ajouter une note pour le dossier…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bar">
+      <span class="feedback" id="feedback"></span>
+      <button class="save" id="saveBtn">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Config : adaptez ces noms s'ils diffèrent dans votre document Grist ----
+const AGENTS_TABLE_ID = "Agents";
+const STATUTS = [
+  "Nouvelle demande",
+  "En cours d'instruction",
+  "En attente de complément",
+  "Validée",
+  "Refusée",
+  "Clôturée",
+];
+const PRIORITES = ["Basse", "Moyenne", "Haute"];
+const STATUT_COLORS = {
+  "Nouvelle demande": "var(--st-nouvelle)",
+  "En cours d'instruction": "var(--st-encours)",
+  "En attente de complément": "var(--st-attente)",
+  "Validée": "var(--st-validee)",
+  "Refusée": "var(--st-refusee)",
+  "Clôturée": "var(--st-cloturee)",
+};
+
+let currentRecord = null;
+let agentsList = []; // [{id, Nom_Complet}]
+
+function fillSelect(select, values, selectedValue, placeholder){
+  select.innerHTML = "";
+  if (placeholder){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = placeholder;
+    select.appendChild(opt);
+  }
+  values.forEach(v => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    if (v === selectedValue) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
+function fmtDate(v){
+  if (!v) return null;
+  // Grist renvoie les dates comme un timestamp (secondes) pour les colonnes Date
+  const d = typeof v === "number" ? new Date(v * 1000) : new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("fr-FR");
+}
+
+function setVal(id, value, isDate){
+  const el = document.getElementById(id);
+  const display = isDate ? fmtDate(value) : (value === null || value === undefined || value === "" ? null : value);
+  if (display){
+    el.textContent = display;
+    el.classList.remove("empty-val");
+  } else {
+    el.textContent = "Non renseigné";
+    el.classList.add("empty-val");
+  }
+}
+
+async function loadAgents(){
+  try{
+    const table = await grist.docApi.fetchTable(AGENTS_TABLE_ID);
+    // fetchTable renvoie un objet colonnaire : {id:[...], Nom_Complet:[...], ...}
+    const ids = table.id || [];
+    agentsList = ids.map((id, i) => ({
+      id,
+      Nom_Complet: table.Nom_Complet ? table.Nom_Complet[i] : String(id),
+    }));
+  } catch(e){
+    console.error("Impossible de charger la table Agents :", e);
+    agentsList = [];
+  }
+}
+
+function render(record){
+  currentRecord = record;
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("dossier").style.display = "block";
+
+  document.getElementById("tagId").textContent = "DOSSIER N° " + record.id;
+  document.getElementById("headOrganisme").textContent = record.Organisme || "Organisme non renseigné";
+
+  const statut = record.Statut || "Nouvelle demande";
+  const badge = document.getElementById("headBadge");
+  badge.textContent = statut;
+
+  setVal("fNom", [record.Civilite, record.Prenom_Demandeur, record.Nom_Demandeur].filter(Boolean).join(" "));
+  setVal("fOrganisme", record.Organisme);
+  setVal("fEmail", record.Email);
+  setVal("fTel", record.Telephone);
+  setVal("fType", record.Type_Demandeur);
+  setVal("fDate", record.Date_Demande, true);
+  setVal("fJeu", record.Jeu_De_Donnees_Demande);
+  setVal("fFinalite", record.Finalite_Reutilisation);
+  setVal("fTypeReut", record.Type_Reutilisation);
+  setVal("fFormat", record.Format_Souhaite);
+  setVal("fEcheance", record.Date_Echeance, true);
+
+  fillSelect(document.getElementById("editStatut"), STATUTS, statut);
+  fillSelect(
+    document.getElementById("editAgent"),
+    agentsList.map(a => a.Nom_Complet),
+    record.Agent_Assigne,
+    "— Non assigné —"
+  );
+  fillSelect(document.getElementById("editPriorite"), PRIORITES, record.Priorite || "Moyenne");
+  document.getElementById("editComment").value = record.Commentaires_Internes || "";
+
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("feedback").className = "feedback";
+}
+
+function showEmpty(){
+  currentRecord = null;
+  document.getElementById("emptyState").style.display = "flex";
+  document.getElementById("dossier").style.display = "none";
+}
+
+async function save(){
+  if (!currentRecord) return;
+  const btn = document.getElementById("saveBtn");
+  const feedback = document.getElementById("feedback");
+  btn.disabled = true;
+  feedback.className = "feedback";
+  feedback.textContent = "Enregistrement…";
+
+  const updates = {
+    Statut: document.getElementById("editStatut").value,
+    Agent_Assigne: document.getElementById("editAgent").value || null,
+    Priorite: document.getElementById("editPriorite").value,
+    Commentaires_Internes: document.getElementById("editComment").value,
+  };
+
+  try {
+    await grist.selectedTable.updateRecords([{ id: currentRecord.id, fields: updates }]);
+    feedback.textContent = "Modifications enregistrées.";
+    feedback.className = "feedback ok";
+  } catch (e) {
+    console.error(e);
+    feedback.textContent = "Échec de l'enregistrement — vérifiez l'accès du widget (Full document access).";
+    feedback.className = "feedback err";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById("saveBtn").addEventListener("click", save);
+
+grist.ready({ requiredAccess: "full" });
+loadAgents().then(() => {
+  grist.onRecord(record => {
+    if (!record) { showEmpty(); return; }
+    render(record);
+  });
+});
+</script>
+</body>
+</html>
